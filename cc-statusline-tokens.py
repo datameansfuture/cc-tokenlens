@@ -51,6 +51,7 @@ import hashlib
 import json
 import os
 import sys
+import tempfile
 
 CACHE_VERSION = 3  # bump when the formula or cache shape changes
 
@@ -79,10 +80,18 @@ def load_cache(path: str) -> dict:
 def save_cache(path: str, data: dict) -> None:
     try:
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        tmp = f"{path}.{os.getpid()}.tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(data, f)
-        os.replace(tmp, path)
+        # A predictable name in a shared TMPDIR is a symlink target: another
+        # process on the machine can create it first, and the write below would
+        # land wherever that link points. mkstemp creates the file exclusively,
+        # so the name is ours and the descriptor is already open.
+        fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(data, f)
+            os.replace(tmp, path)
+        except BaseException:
+            os.unlink(tmp)
+            raise
     except OSError:
         pass
 

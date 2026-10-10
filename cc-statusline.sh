@@ -40,10 +40,28 @@ if [ -n "$_cav_files" ]; then
   CAVEMAN_SCRIPT="$(ls -1t $_cav_files 2>/dev/null | head -1)"
 fi
 
-# claude-statusline ships as an npm global. Read the prefix from npm rather than
-# hardcoding a homebrew path, so the mod works on Linux, nvm, and any other
-# prefix. `npm root -g` prints the node_modules directory itself.
-NPM_ROOT="$(npm root -g 2>/dev/null)"
+# claude-statusline ships as an npm global. The prefix is read without trusting
+# PATH: a statusline inherits whatever the shell that launched it had, and a
+# `npm` earlier in that PATH is not necessarily the npm that installed the
+# package. Common locations first, PATH last.
+npm_root() {
+  for candidate in \
+    "${NPM_BIN:-/nonexistent}" \
+    /opt/homebrew/bin/npm \
+    /usr/local/bin/npm \
+    /usr/bin/npm
+  do
+    if [ -x "$candidate" ]; then
+      "$candidate" root -g 2>/dev/null && return 0
+    fi
+  done
+
+  # nvm and other version managers install into a versioned prefix that has to
+  # be resolved, so PATH is the only way left to find them.
+  command -v npm >/dev/null 2>&1 && npm root -g 2>/dev/null
+}
+
+NPM_ROOT="$(npm_root)"
 if [ -n "$NPM_ROOT" ] && [ -d "$NPM_ROOT/@alyibrahim/claude-statusline" ]; then
   # Never fall back to <prefix>/bin/claude-statusline — that is bin/cli.js, the
   # command-line installer, which prints its help text. A wrong path here paints
