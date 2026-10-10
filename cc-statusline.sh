@@ -41,12 +41,12 @@ if [ -n "$_cav_files" ]; then
 fi
 
 # claude-statusline ships as an npm global. The prefix is read without trusting
-# PATH: a statusline inherits whatever the shell that launched it had, and a
-# `npm` earlier in that PATH is not necessarily the npm that installed the
-# package. Common locations first, PATH last.
+# PATH or the environment: a statusline inherits whatever the shell that launched
+# it had, and a `npm` earlier in that PATH is not necessarily the npm that
+# installed the package. An env var naming the binary would be the same hole with
+# a friendlier name, so there is no env var. Absolute paths first, PATH last.
 npm_root() {
   for candidate in \
-    "${NPM_BIN:-/nonexistent}" \
     /opt/homebrew/bin/npm \
     /usr/local/bin/npm \
     /usr/bin/npm
